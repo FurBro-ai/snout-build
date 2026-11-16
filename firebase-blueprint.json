@@ -1,0 +1,226 @@
+{
+  "entities": {
+    "UserPublic": {
+      "title": "UserPublic",
+      "description": "Publicly visible Snout user profile metadata.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "username": { "type": "string", "minLength": 2, "maxLength": 32, "pattern": "^[a-zA-Z0-9_.-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "avatarUrl": { "type": "string", "maxLength": 1024 },
+        "status": { "type": "string", "enum": ["online", "idle", "dnd", "offline"] },
+        "customStatus": { "type": "string", "maxLength": 128 },
+        "isNitro": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "displayName", "status", "isNitro", "createdAt"]
+    },
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Private PII and security settings isolated per user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "twoFactorEnabled": { "type": "boolean" },
+        "platformRole": { "type": "string", "enum": ["USER", "ADMIN"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "twoFactorEnabled", "platformRole", "updatedAt"]
+    },
+    "Server": {
+      "title": "Server",
+      "description": "Snout community server.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId", "isPublic", "createdAt"]
+    },
+    "ServerMember": {
+      "title": "ServerMember",
+      "description": "Membership record inside a server subcollection.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "serverId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "role": { "type": "string", "enum": ["OWNER", "ADMIN", "MODERATOR", "MEMBER"] },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "serverId", "role", "joinedAt"]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "Text, voice, announcement, or forum channel within a server.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "serverId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "type": { "type": "string", "enum": ["TEXT", "VOICE", "ANNOUNCEMENT", "FORUM"] },
+        "isPrivate": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "serverId", "name", "type", "isPrivate", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Persistent message in a server channel.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "serverId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "channelId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "isPinned": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "serverId", "channelId", "authorId", "content", "isPinned", "createdAt", "updatedAt"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "SNOUT NITRO $2.00/month subscription entitlement.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "planId": { "type": "string", "enum": ["chord_nitro_monthly"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "PENDING", "EXPIRED", "CANCELLED"] },
+        "priceUsd": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "planId", "status", "priceUsd", "updatedAt"]
+    },
+    "PaymentRecord": {
+      "title": "PaymentRecord",
+      "description": "Platega payment transaction ledger record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["USD"] },
+        "status": { "type": "string", "enum": ["PENDING", "CONFIRMED", "CANCELED", "DISPUTED", "CHARGEBACKED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "amount", "currency", "status", "createdAt"]
+    },
+    "ServerDatabaseTable": {
+      "title": "ServerDatabaseTable",
+      "description": "Collaborative structured database table belonging to a Snout server.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "serverId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 300 },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "serverId", "name", "createdBy", "createdAt", "updatedAt"]
+    },
+    "ServerDatabaseRow": {
+      "title": "ServerDatabaseRow",
+      "description": "Single structured record inside a server database table.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "tableId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "serverId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "tableId", "serverId", "createdBy", "createdAt", "updatedAt"]
+    },
+    "ScheduledEvent": {
+      "title": "ScheduledEvent",
+      "description": "Scheduled voice or community event inside a Snout server.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "serverId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "startsAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["SCHEDULED", "LIVE", "COMPLETED", "CANCELLED"] },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "serverId", "title", "startsAt", "status", "createdBy", "createdAt"]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "Private saved message bookmark scoped to its owning user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "messageId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "note": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "messageId", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublic" },
+      "description": "Public Snout user profile documents."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Isolated PII and security metadata readable/writable only by owner or admin."
+    },
+    "/users/{userId}/bookmarks/{bookmarkId}": {
+      "schema": { "$ref": "#/entities/Bookmark" },
+      "description": "Private saved message bookmarks accessible only to the owning user."
+    },
+    "/servers/{serverId}": {
+      "schema": { "$ref": "#/entities/Server" },
+      "description": "Snout server metadata."
+    },
+    "/servers/{serverId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/ServerMember" },
+      "description": "Subcollection of server members used as Master Gate for channels and messages."
+    },
+    "/servers/{serverId}/channels/{channelId}": {
+      "schema": { "$ref": "#/entities/Channel" },
+      "description": "Server channels gated by server membership."
+    },
+    "/servers/{serverId}/channels/{channelId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Messages inside server channels gated by server membership."
+    },
+    "/servers/{serverId}/databases/{tableId}": {
+      "schema": { "$ref": "#/entities/ServerDatabaseTable" },
+      "description": "Server collaborative built-in database tables gated by server membership."
+    },
+    "/servers/{serverId}/databases/{tableId}/rows/{rowId}": {
+      "schema": { "$ref": "#/entities/ServerDatabaseRow" },
+      "description": "Rows inside server collaborative database tables gated by server membership."
+    },
+    "/servers/{serverId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/ScheduledEvent" },
+      "description": "Server scheduled events gated by server membership."
+    },
+    "/subscriptions/{userId}": {
+      "schema": { "$ref": "#/entities/Subscription" },
+      "description": "Server-managed SNOUT NITRO subscription entitlements."
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/PaymentRecord" },
+      "description": "Server-managed Platega payment ledger records."
+    }
+  }
+}

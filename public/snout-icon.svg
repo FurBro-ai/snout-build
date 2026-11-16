@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="8" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1B1F3B"/>
+      <stop offset="0.55" stop-color="#101322"/>
+      <stop offset="1" stop-color="#0B0D14"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="24" y1="18" x2="108" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B96FF"/>
+      <stop offset="0.5" stop-color="#5865F2"/>
+      <stop offset="1" stop-color="#3B45C9"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="url(#bg)"/>
+  <rect x="2" y="2" width="124" height="124" rx="28" stroke="url(#accent)" stroke-opacity="0.55" stroke-width="2"/>
+  <path d="M64 24c-25 0-41 14-41 34 0 11 5.5 20 15 25l-3 18 19-10c3.2.6 6.5 1 10 1 25 0 41-14 41-34S89 24 64 24Z" fill="#F8FAFC"/>
+  <ellipse cx="51" cy="57" rx="6.5" ry="10" fill="#0B0D14"/>
+  <ellipse cx="77" cy="57" rx="6.5" ry="10" fill="#0B0D14"/>
+  <path d="M55 74c5 4 13 4 18 0" stroke="#0B0D14" stroke-width="4" stroke-linecap="round"/>
+  <path d="M96 22l3.4 8.6L108 34l-8.6 3.4L96 46l-3.4-8.6L84 34l8.6-3.4L96 22Z" fill="#FBBF24"/>
+</svg>

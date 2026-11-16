@@ -1,0 +1,44 @@
+[Unit]
+Description=Snout / CHORD real-time platform
+Documentation=file:/opt/snout/app/deploy/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=snout
+Group=snout
+WorkingDirectory=/opt/snout/app
+Environment=NODE_ENV=production
+Environment=HOME=/opt/snout
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=npm_config_cache=/opt/snout/.npm
+EnvironmentFile=/opt/snout/app/.env
+# package.json "start" => NODE_ENV=production tsx server.ts
+ExecStart=/usr/bin/env npm start
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=20
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=snout
+UMask=0027
+
+# --- Hardening ---------------------------------------------------------------
+# The service runs unprivileged (port 3000 needs no capabilities), but must be
+# able to write the SQLite/JSON store, uploads, and npm's cache directory.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/opt/snout/data /opt/snout/app/uploads /opt/snout/.npm
+
+[Install]
+WantedBy=multi-user.target

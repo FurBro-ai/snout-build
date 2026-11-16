@@ -1,0 +1,434 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'kozachenk.168@gmail.com'
+      );
+    }
+
+    function isServerMember(serverId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/servers/$(serverId)/members/$(request.auth.uid));
+    }
+
+    function getServer(serverId) {
+      return get(/databases/$(database)/documents/servers/$(serverId)).data;
+    }
+
+    function isServerOwner(serverId) {
+      return isSignedIn() && getServer(serverId).ownerId == request.auth.uid;
+    }
+
+    function isValidUserPublic(data, userId) {
+      return data.keys().hasAll(['uid', 'username', 'displayName', 'status', 'isNitro', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'username', 'displayName', 'avatarUrl', 'status', 'customStatus', 'isNitro', 'createdAt', 'updatedAt'])
+        && data.uid == userId
+        && data.username is string && data.username.size() >= 2 && data.username.size() <= 32
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 64
+        && (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 1024))
+        && data.status in ['online', 'idle', 'dnd', 'offline']
+        && (!('customStatus' in data) || (data.customStatus is string && data.customStatus.size() <= 128))
+        && data.isNitro is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidUserPrivate(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'twoFactorEnabled', 'platformRole', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'twoFactorEnabled', 'platformRole', 'updatedAt'])
+        && data.uid == userId
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.twoFactorEnabled is bool
+        && data.platformRole in ['USER', 'ADMIN']
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidServer(data, serverId) {
+      return data.keys().hasAll(['id', 'name', 'ownerId', 'isPublic', 'createdAt'])
+        && data.keys().hasOnly(['id', 'name', 'description', 'ownerId', 'isPublic', 'createdAt', 'updatedAt'])
+        && data.id == serverId
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 100
+        && (!('description' in data) || (data.description is string && data.description.size() <= 500))
+        && data.ownerId is string && data.ownerId.size() <= 128
+        && data.isPublic is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidMember(data, serverId, memberId) {
+      return data.keys().hasAll(['userId', 'serverId', 'role', 'joinedAt'])
+        && data.keys().hasOnly(['userId', 'serverId', 'role', 'joinedAt'])
+        && data.userId == memberId
+        && data.serverId == serverId
+        && data.role in ['OWNER', 'ADMIN', 'MODERATOR', 'MEMBER']
+        && data.joinedAt is timestamp;
+    }
+
+    function isValidChannel(data, serverId, channelId) {
+      return data.keys().hasAll(['id', 'serverId', 'name', 'type', 'isPrivate', 'createdAt'])
+        && data.keys().hasOnly(['id', 'serverId', 'name', 'topic', 'type', 'isPrivate', 'createdAt'])
+        && data.id == channelId
+        && data.serverId == serverId
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && (!('topic' in data) || (data.topic is string && data.topic.size() <= 500))
+        && data.type in ['TEXT', 'VOICE', 'ANNOUNCEMENT', 'FORUM']
+        && data.isPrivate is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidMessage(data, serverId, channelId, messageId) {
+      return data.keys().hasAll(['id', 'serverId', 'channelId', 'authorId', 'content', 'isPinned', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'serverId', 'channelId', 'authorId', 'content', 'isPinned', 'createdAt', 'updatedAt'])
+        && data.id == messageId
+        && data.serverId == serverId
+        && data.channelId == channelId
+        && data.authorId is string && data.authorId.size() <= 128
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 4000
+        && data.isPinned is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBookmark(data, userId, bookmarkId) {
+      return data.keys().hasAll(['id', 'userId', 'messageId', 'content', 'createdAt'])
+        && data.keys().hasOnly(['id', 'userId', 'messageId', 'content', 'note', 'createdAt'])
+        && data.id == bookmarkId
+        && data.userId == userId
+        && data.messageId is string && data.messageId.size() >= 1 && data.messageId.size() <= 128
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 400
+        && (!('note' in data) || (data.note is string && data.note.size() <= 300))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidServerDatabaseTable(data, serverId, tableId) {
+      return data.keys().hasAll(['id', 'serverId', 'name', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'serverId', 'name', 'description', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.id == tableId
+        && data.serverId == serverId
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && (!('description' in data) || (data.description is string && data.description.size() <= 300))
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidServerDatabaseRow(data, serverId, tableId, rowId) {
+      return data.keys().hasAll(['id', 'tableId', 'serverId', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'tableId', 'serverId', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.id == rowId
+        && data.tableId == tableId
+        && data.serverId == serverId
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidScheduledEvent(data, serverId, eventId) {
+      return data.keys().hasAll(['id', 'serverId', 'title', 'startsAt', 'status', 'createdBy', 'createdAt'])
+        && data.keys().hasOnly(['id', 'serverId', 'title', 'description', 'startsAt', 'status', 'createdBy', 'createdAt'])
+        && data.id == eventId
+        && data.serverId == serverId
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 100
+        && (!('description' in data) || (data.description is string && data.description.size() <= 500))
+        && data.startsAt is timestamp
+        && data.status in ['SCHEDULED', 'LIVE', 'COMPLETED', 'CANCELLED']
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdAt is timestamp;
+    }
+
+    // Connection diagnostic doc (read-only)
+    match /test/connection {
+      allow get: if isSignedIn();
+    }
+
+    // Admin registry (read by self/admin only)
+    match /admins/{adminId} {
+      allow get: if isOwner(adminId) || isAdmin();
+      allow list, write: if false;
+    }
+
+    // Public user profiles (no PII)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isSignedIn();
+      allow list: if isAdmin();
+      allow create: if isValidId(userId)
+        && isVerifiedUser()
+        && isOwner(userId)
+        && isValidUserPublic(incoming(), userId)
+        && incoming().isNitro == false
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidUserPublic(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && (
+          isAdmin() ||
+          (isOwner(userId)
+            && incoming().isNitro == existing().isNitro
+            && incoming().diff(existing()).affectedKeys().hasOnly(['username', 'displayName', 'avatarUrl', 'status', 'customStatus', 'updatedAt']))
+        );
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+
+      // Isolated Private PII & Security Info
+      match /private/{docId} {
+        allow get: if isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+        allow list: if isOwner(userId) || isAdmin();
+        allow create: if isValidId(userId) && isValidId(docId)
+          && isVerifiedUser()
+          && isOwner(userId)
+          && isValidUserPrivate(incoming(), userId)
+          && incoming().platformRole == 'USER'
+          && incoming().updatedAt == request.time;
+        allow update: if isValidId(userId) && isValidId(docId)
+          && isVerifiedUser()
+          && isValidUserPrivate(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().updatedAt == request.time
+          && (
+            isAdmin() ||
+            (isOwner(userId)
+              && incoming().platformRole == existing().platformRole
+              && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'twoFactorEnabled', 'updatedAt']))
+          );
+        allow delete: if isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+      }
+
+      // Personal Bookmarks
+      match /bookmarks/{bookmarkId} {
+        allow get: if isValidId(userId) && isValidId(bookmarkId) && (isOwner(userId) || isAdmin());
+        allow list: if isOwner(userId) || isAdmin();
+        allow create: if isValidId(userId) && isValidId(bookmarkId)
+          && isVerifiedUser()
+          && isOwner(userId)
+          && isValidBookmark(incoming(), userId, bookmarkId)
+          && incoming().createdAt == request.time;
+        allow update: if isValidId(userId) && isValidId(bookmarkId)
+          && isVerifiedUser()
+          && isOwner(userId)
+          && isValidBookmark(incoming(), userId, bookmarkId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().messageId == existing().messageId
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly(['note']);
+        allow delete: if isValidId(userId) && isValidId(bookmarkId) && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    // Servers and nested resources
+    match /servers/{serverId} {
+      allow get: if isValidId(serverId) && (isServerMember(serverId) || resource.data.isPublic == true || isAdmin());
+      allow list: if isSignedIn() && (resource.data.isPublic == true || resource.data.ownerId == request.auth.uid);
+      allow create: if isValidId(serverId)
+        && isVerifiedUser()
+        && isValidServer(incoming(), serverId)
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(serverId)
+        && isVerifiedUser()
+        && isValidServer(incoming(), serverId)
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && (isServerOwner(serverId) || isAdmin())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'isPublic', 'updatedAt']);
+      allow delete: if isValidId(serverId) && (isServerOwner(serverId) || isAdmin());
+
+      match /members/{memberId} {
+        allow get: if isValidId(serverId) && isValidId(memberId) && (isServerMember(serverId) || isAdmin());
+        allow list: if isServerMember(serverId) || isAdmin();
+        allow create: if isValidId(serverId) && isValidId(memberId)
+          && isVerifiedUser()
+          && isValidMember(incoming(), serverId, memberId)
+          && incoming().joinedAt == request.time
+          && (
+            (isOwner(memberId) && incoming().role == 'MEMBER' && getServer(serverId).isPublic == true) ||
+            (isOwner(memberId) && incoming().role == 'OWNER' && getServer(serverId).ownerId == request.auth.uid) ||
+            isServerOwner(serverId) ||
+            isAdmin()
+          );
+        allow update: if isValidId(serverId) && isValidId(memberId)
+          && isVerifiedUser()
+          && isValidMember(incoming(), serverId, memberId)
+          && incoming().userId == existing().userId
+          && incoming().serverId == existing().serverId
+          && incoming().joinedAt == existing().joinedAt
+          && (isServerOwner(serverId) || isAdmin())
+          && incoming().diff(existing()).affectedKeys().hasOnly(['role']);
+        allow delete: if isValidId(serverId) && isValidId(memberId)
+          && (isOwner(memberId) || isServerOwner(serverId) || isAdmin());
+      }
+
+      match /channels/{channelId} {
+        allow get: if isValidId(serverId) && isValidId(channelId) && (isServerMember(serverId) || isAdmin());
+        allow list: if isServerMember(serverId) || isAdmin();
+        allow create: if isValidId(serverId) && isValidId(channelId)
+          && isVerifiedUser()
+          && isServerMember(serverId)
+          && (isServerOwner(serverId) || isAdmin())
+          && isValidChannel(incoming(), serverId, channelId)
+          && incoming().createdAt == request.time;
+        allow update: if isValidId(serverId) && isValidId(channelId)
+          && isVerifiedUser()
+          && isServerMember(serverId)
+          && (isServerOwner(serverId) || isAdmin())
+          && isValidChannel(incoming(), serverId, channelId)
+          && incoming().id == existing().id
+          && incoming().serverId == existing().serverId
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'topic', 'isPrivate']);
+        allow delete: if isValidId(serverId) && isValidId(channelId)
+          && (isServerOwner(serverId) || isAdmin());
+
+        match /messages/{messageId} {
+          allow get: if isValidId(serverId) && isValidId(channelId) && isValidId(messageId)
+            && (isServerMember(serverId) || isAdmin());
+          allow list: if isServerMember(serverId) || isAdmin();
+          allow create: if isValidId(serverId) && isValidId(channelId) && isValidId(messageId)
+            && isVerifiedUser()
+            && isServerMember(serverId)
+            && isValidMessage(incoming(), serverId, channelId, messageId)
+            && incoming().authorId == request.auth.uid
+            && incoming().isPinned == false
+            && incoming().createdAt == request.time
+            && incoming().updatedAt == request.time;
+          allow update: if isValidId(serverId) && isValidId(channelId) && isValidId(messageId)
+            && isVerifiedUser()
+            && isServerMember(serverId)
+            && isValidMessage(incoming(), serverId, channelId, messageId)
+            && incoming().id == existing().id
+            && incoming().serverId == existing().serverId
+            && incoming().channelId == existing().channelId
+            && incoming().authorId == existing().authorId
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && (
+              (existing().authorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'updatedAt'])) ||
+              ((isServerOwner(serverId) || isAdmin()) && incoming().diff(existing()).affectedKeys().hasOnly(['isPinned', 'updatedAt']))
+            );
+          allow delete: if isValidId(serverId) && isValidId(channelId) && isValidId(messageId)
+            && isServerMember(serverId)
+            && (existing().authorId == request.auth.uid || isServerOwner(serverId) || isAdmin());
+        }
+      }
+
+      match /databases/{tableId} {
+        allow get: if isValidId(serverId) && isValidId(tableId) && (isServerMember(serverId) || isAdmin());
+        allow list: if isServerMember(serverId) || isAdmin();
+        allow create: if isValidId(serverId) && isValidId(tableId)
+          && isVerifiedUser()
+          && isServerMember(serverId)
+          && (isServerOwner(serverId) || isAdmin())
+          && isValidServerDatabaseTable(incoming(), serverId, tableId)
+          && incoming().createdBy == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isValidId(serverId) && isValidId(tableId)
+          && isVerifiedUser()
+          && isServerMember(serverId)
+          && (isServerOwner(serverId) || isAdmin())
+          && isValidServerDatabaseTable(incoming(), serverId, tableId)
+          && incoming().id == existing().id
+          && incoming().serverId == existing().serverId
+          && incoming().createdBy == existing().createdBy
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'updatedAt']);
+        allow delete: if isValidId(serverId) && isValidId(tableId) && (isServerOwner(serverId) || isAdmin());
+
+        match /rows/{rowId} {
+          allow get: if isValidId(serverId) && isValidId(tableId) && isValidId(rowId)
+            && (isServerMember(serverId) || isAdmin());
+          allow list: if isServerMember(serverId) || isAdmin();
+          allow create: if isValidId(serverId) && isValidId(tableId) && isValidId(rowId)
+            && isVerifiedUser()
+            && isServerMember(serverId)
+            && isValidServerDatabaseRow(incoming(), serverId, tableId, rowId)
+            && incoming().createdBy == request.auth.uid
+            && incoming().createdAt == request.time
+            && incoming().updatedAt == request.time;
+          allow update: if isValidId(serverId) && isValidId(tableId) && isValidId(rowId)
+            && isVerifiedUser()
+            && isServerMember(serverId)
+            && isValidServerDatabaseRow(incoming(), serverId, tableId, rowId)
+            && incoming().id == existing().id
+            && incoming().tableId == existing().tableId
+            && incoming().serverId == existing().serverId
+            && incoming().createdBy == existing().createdBy
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt']);
+          allow delete: if isValidId(serverId) && isValidId(tableId) && isValidId(rowId)
+            && isServerMember(serverId)
+            && (existing().createdBy == request.auth.uid || isServerOwner(serverId) || isAdmin());
+        }
+      }
+
+      match /events/{eventId} {
+        allow get: if isValidId(serverId) && isValidId(eventId) && (isServerMember(serverId) || isAdmin());
+        allow list: if isServerMember(serverId) || isAdmin();
+        allow create: if isValidId(serverId) && isValidId(eventId)
+          && isVerifiedUser()
+          && isServerMember(serverId)
+          && (isServerOwner(serverId) || isAdmin())
+          && isValidScheduledEvent(incoming(), serverId, eventId)
+          && incoming().createdBy == request.auth.uid
+          && incoming().createdAt == request.time;
+        allow update: if isValidId(serverId) && isValidId(eventId)
+          && isVerifiedUser()
+          && isServerMember(serverId)
+          && (isServerOwner(serverId) || isAdmin())
+          && isValidScheduledEvent(incoming(), serverId, eventId)
+          && incoming().id == existing().id
+          && incoming().serverId == existing().serverId
+          && incoming().createdBy == existing().createdBy
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'startsAt', 'status']);
+        allow delete: if isValidId(serverId) && isValidId(eventId) && (isServerOwner(serverId) || isAdmin());
+      }
+    }
+
+    // Subscriptions and Payments: strictly read-only for owner/admin; mutated only by verified backend
+    match /subscriptions/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow get: if isValidId(paymentId) && isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+  }
+}

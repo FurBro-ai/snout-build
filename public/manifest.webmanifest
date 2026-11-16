@@ -1,0 +1,12 @@
+{
+  "name": "Snout Community Hub",
+  "short_name": "Snout",
+  "description": "Real-time community platform with voice, community databases, bots, Nitro, and a full admin console.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D0F12",
+  "theme_color": "#5865F2",
+  "icons": [
+    { "src": "/snout-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Snout",
+  "description": "Real-time community platform with servers, WebRTC voice, community databases, developer bots, Nitro billing, support centre, roadmap votes, and a full admin console.",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
