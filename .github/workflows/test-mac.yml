@@ -1,0 +1,7 @@
+name: Test Mac
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: macos-latest
+    steps:
+      - run: uname -a
