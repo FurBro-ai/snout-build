@@ -1,7 +1,19 @@
 name: Test Mac
 on: workflow_dispatch
 jobs:
-  probe:
+  mac13:
+    runs-on: macos-13
+    steps:
+      - run: uname -a
+  mac14:
+    runs-on: macos-14
+    steps:
+      - run: uname -a
+  mac15:
+    runs-on: macos-15
+    steps:
+      - run: uname -a
+  maclatest:
     runs-on: macos-latest
     steps:
       - run: uname -a
