@@ -1,0 +1,32 @@
+name: macOS Only
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: npm ci
+      - run: npm run build
+      - run: cargo install tauri-cli --version "^2" --locked
+      - name: Build macOS
+        working-directory: src-tauri
+        run: cargo tauri build --target universal-apple-darwin --bundles dmg
+      - name: Normalise
+        run: |
+          mkdir -p artifacts
+          cp src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg artifacts/Snout-macOS-universal.dmg
+          ls -lh artifacts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snout-macos-only
+          path: artifacts/*
+          if-no-files-found: error
